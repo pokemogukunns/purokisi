@@ -1,7 +1,11 @@
-// api/proxy.js
 const { createProxyMiddleware } = require("http-proxy-middleware");
 
-module.exports = (req, res) => {
+const proxy = createProxyMiddleware({
+  changeOrigin: true,
+  pathRewrite: { "^/api/proxy": "" },
+});
+
+module.exports = async (req, res) => {
   const targetUrl = req.query.url;
 
   if (!targetUrl) {
@@ -9,13 +13,17 @@ module.exports = (req, res) => {
     return;
   }
 
-  // createProxyMiddlewareを設定
-  const proxy = createProxyMiddleware({
-    target: targetUrl,
-    changeOrigin: true,
-    pathRewrite: { "^/api/proxy": "" },
-  });
+  // プロキシのターゲットを設定
+  req.url = targetUrl;
 
   // プロキシを実行
-  return proxy(req, res);
+  return new Promise((resolve, reject) => {
+    proxy(req, res, (result) => {
+      if (result instanceof Error) {
+        reject(result);
+      } else {
+        resolve(result);
+      }
+    });
+  });
 };
